@@ -119,7 +119,7 @@ rfm_df['CLTV_12mo'] = rfm_df['Predicted_Monthly_Spend'] * 12
 # Display results
 st.write(rfm_df[['Recency', 'Frequency', 'Monetary', 'CLTV_12mo']].head())
 
-        if page == "Home":
+    if page == "Home":
             st.title("Home")
             st.write("Welcome to the RFM Analysis and CLTV Prediction App.")
             st.subheader("1. Data Loading & Cleaning")
