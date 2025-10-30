@@ -14,23 +14,28 @@ def load_data(file_path):
         return None
 
 def main():
-    # Moved lifetimes import here to avoid environment conflicts
-    #from lifetimes import BetaGeoFitter, GammaGammaFitter
-    #from lifetimes.utils import summary_data_from_transaction_data
+    st.title("RFM + Simple CLTV Analyzer")
 
-    st.sidebar.title("Navigation")
-    page = st.sidebar.radio("Go to", ["Home", "RFM Analysis", "CLTV Prediction", "Documentation"])
+    # --- Sidebar navigation
+    page = st.sidebar.radio("Go to:", ["Home", "RFM Analysis", "CLTV Prediction", "Documentation"])
 
+    # --- Data upload (keep this EXACTLY as-is and inside main())
     st.sidebar.title("Upload Data")
-    uploaded_file = st.sidebar.file_uploader("Upload your CSV file", type=["csv"])
+    uploaded_file = st.sidebar.file_uploader("Upload your CSV", type=["csv"])
 
-if uploaded_file is not None:
-        df = load_data(uploaded_file)
-else:
-        st.warning("Please upload a CSV file to continue.")
+    if uploaded_file is None:
+        st.info("Please upload a CSV to continue.")
         st.stop()
-    #else:
-        #df = load_data("shopping_trends.csv")
+
+    # Load the CSV now that we know it's present
+    try:
+        df = pd.read_csv(uploaded_file)
+    except Exception as e:
+        st.error(f"Failed to read CSV: {e}")
+        st.stop()
+
+    # (continue with cleaning, compute RFM, etc…)
+
 
 if df is not None:
         # Data Cleaning and Preparation
