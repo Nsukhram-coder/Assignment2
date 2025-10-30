@@ -156,67 +156,52 @@ elif page == "CLTV Prediction":
             st.write("***Distribution of Predicted CLTV:***")
             fig_cltv_dist = px.histogram(
                 rfm_cltv_df,
-                x='predicted_cltv',
+                x="predicted_cltv",
                 nbins=50,
-                title='CLTV Distribution'
+                title="CLTV Distribution"
             )
             st.plotly_chart(fig_cltv_dist)
 
             st.write("***Top 10 Customers by Predicted CLTV:***")
             st.dataframe(
-            rfm_cltv_df.sort_values(by='predicted_cltv', ascending=False).head(10)
+                rfm_cltv_df.sort_values(by="predicted_cltv", ascending=False).head(10)
+            )
+
+        # Download button (RFM + CLTV results)
+        csv = rfm_cltv_df.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            label="Download Results (RFM + CLTV CSV)",
+            data=csv,
+            file_name="rfm_cltv_results.csv",
+            mime="text/csv",
         )
 
 elif page == "Documentation":
             st.title("Documentation")
             st.markdown("""
         ## RFM Analysis and CLTV Prediction
+
         This application performs Recency, Frequency, Monetary (RFM) analysis and predicts
-        Customer Lifetime Value (CLTV) from a given dataset of customer transactions.
-        It is designed to help businesses understand their customer segments and predict future value.
+        Customer Lifetime Value (CLTV) from a dataset of customer transactions. It helps
+        businesses understand their customer segments and estimate future value.
+
+        ### What the app does
+        - Cleans your uploaded CSV
+        - Computes RFM (Recency, Frequency, Monetary)
+        - Scores and segments customers
+        - Estimates a simple 12-month CLTV using Linear Regression on R, F, and M
+
+        ### Expected columns
+        - `customer_id`
+        - `invoice_date`
+        - `total_spend` **or** both `quantity` and `price` (to compute `total_spend`)
+
+        ### How this can be used
+        - **Segment Customers:** Identify different customer segments and understand their behavior.
+        - **Targeted Marketing:** Create personalized campaigns for different segments.
+        - **Customer Retention:** Focus on retaining high-value customers (e.g., “Champions”, “Loyal Customers”).
+        - **Optimize Spend:** Allocate marketing resources more effectively based on predicted CLTV.
         """)
-
-            - **Frequency**: How often a customer makes a purchase.
-            - **Monetary**: How much money a customer spends on purchases.
-
-            RFM analysis is a marketing technique used to quantitatively rank and group customers based on their transaction history. It helps businesses identify their best customers and segment them into different groups for targeted marketing campaigns.
-
-            ### CLTV Prediction
-            Customer Lifetime Value (CLTV) is a prediction of the net profit attributed to the entire future relationship with a customer. It helps businesses understand the long-term value of their customers and make strategic decisions about customer acquisition and retention.
-
-            ## How are they computed in this app?
-
-            ### RFM Calculation
-            1.  **Recency**: Calculated as the number of days between the last purchase date of a customer and the latest transaction date in the dataset.
-            2.  **Frequency**: Calculated as the total number of purchases made by a customer.
-            3.  **Monetary**: Calculated as the total amount of money spent by a customer.
-
-            Customers are then scored on a scale of 1 to 5 for each RFM metric, and a combined RFM score is created. Based on these scores, customers are segmented into categories like "Champions," "Loyal Customers," and "At Risk."
-
-            ### CLTV Prediction
-            The app uses the **BG/NBD (Beta-Geometric/Negative Binomial Distribution)** and **Gamma-Gamma** models from the `lifetimes` library to predict CLTV.
-            - The **BG/NBD model** predicts the number of future transactions a customer is likely to make.
-            - The **Gamma-Gamma model** predicts the average monetary value of those future transactions.
-
-            By combining these two models, the app estimates the total lifetime value of each customer over a 12-month period.
-
-            ## How can this app be used in a business scenario?
-
-            This application can be used by businesses to:
-            - **Segment Customers**: Identify different customer segments and understand their behavior.
-            - **Targeted Marketing**: Create personalized marketing campaigns for different customer segments. For example, a business could offer a special discount to "At Risk" customers to encourage them to make a purchase.
-            - **Customer Retention**: Focus on retaining high-value customers, such as "Champions" and "Loyal Customers."
-            - **Optimize Marketing Spend**: Allocate marketing resources more effectively by focusing on acquiring and retaining customers with the highest predicted CLTV.
-            """)
-
-        # Download Button
-        csv = rfm_cltv_df.to_csv().encode('utf-8')
-        st.sidebar.download_button(
-            label="Download Results",
-            data=csv,
-            file_name='rfm_cltv_results.csv',
-            mime='text/csv',
-        )
 
 if __name__ == "__main__":
     main()
