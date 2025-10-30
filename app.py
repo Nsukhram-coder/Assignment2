@@ -154,12 +154,12 @@ elif page == "CLTV Prediction":
             st.dataframe(rfm_cltv_df.head())
 
             st.write("***Distribution of Predicted CLTV:***")
-        fig_cltv_dist = px.histogram(
-            rfm_cltv_df,
-            x='predicted_cltv',
-            nbins=50,
-            title='CLTV Distribution'
-        )
+            fig_cltv_dist = px.histogram(
+                rfm_cltv_df,
+                x='predicted_cltv',
+                nbins=50,
+                title='CLTV Distribution'
+            )
             st.plotly_chart(fig_cltv_dist)
 
             st.write("***Top 10 Customers by Predicted CLTV:***")
