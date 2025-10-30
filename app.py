@@ -139,13 +139,13 @@ elif page == "RFM Analysis":
             st.dataframe(rfm_cltv_df.head())
 
             st.write("***Customer Segmentation:***")
-        segment_counts = rfm_cltv_df['segment'].value_counts()
-        fig_segments = px.bar(
-            x=segment_counts.index,
-            y=segment_counts.values,
-            labels={'x': 'Segment', 'y': 'Number of Customers'},
-            title="Customer Segments"
-        )
+            segment_counts = rfm_cltv_df['segment'].value_counts()
+            fig_segments = px.bar(
+                x=segment_counts.index,
+                y=segment_counts.values,
+                labels={'x': 'Segment', 'y': 'Number of Customers'},
+                title="Customer Segments"
+            )
             st.plotly_chart(fig_segments)
 
 elif page == "CLTV Prediction":
@@ -168,8 +168,8 @@ elif page == "CLTV Prediction":
         )
 
 elif page == "Documentation":
-        st.title("Documentation")
-        st.markdown("""
+            st.title("Documentation")
+            st.markdown("""
         ## RFM Analysis and CLTV Prediction
         This application performs Recency, Frequency, Monetary (RFM) analysis and predicts
         Customer Lifetime Value (CLTV) from a given dataset of customer transactions.
