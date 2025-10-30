@@ -126,47 +126,56 @@ if page == "Home":
             st.write("**Dataset Preview:**")
             st.dataframe(df.head())
             st.write("**Cleaned Dataset Info:**")
-            st.text(f"Number of rows: {df.shape[0]}\nNumber of columns: {df.shape[1]}")
+            st.text(f"Number of rows: {df.shape[0]} | Number of columns: {df.shape[1]}")
 
-        elif page == "RFM Analysis":
+elif page == "RFM Analysis":
             st.title("RFM Analysis")
-            st.write("**RFM Summary Metrics:**")
+            st.write("***RFM Summary Metrics:***")
             st.write(f"Average Recency: {rfm_cltv_df['R'].mean():.2f} days")
             st.write(f"Average Frequency: {rfm_cltv_df['F'].mean():.2f} purchases")
             st.write(f"Average Monetary: ${rfm_cltv_df['M'].mean():.2f}")
 
-            st.write("**RFM Analysis Results:**")
+            st.write("***RFM Analysis Results:***")
             st.dataframe(rfm_cltv_df.head())
 
-            st.write("**Customer Segmentation:**")
-            segment_counts = rfm_cltv_df['segment'].value_counts()
-            fig_segments = px.bar(segment_counts, x=segment_counts.index, y=segment_counts.values, labels={'x': 'Segment', 'y': 'Number of Customers'})
+            st.write("***Customer Segmentation:***")
+        segment_counts = rfm_cltv_df['segment'].value_counts()
+        fig_segments = px.bar(
+            x=segment_counts.index,
+            y=segment_counts.values,
+            labels={'x': 'Segment', 'y': 'Number of Customers'},
+            title="Customer Segments"
+        )
             st.plotly_chart(fig_segments)
 
-        elif page == "CLTV Prediction":
+elif page == "CLTV Prediction":
             st.title("CLTV Prediction")
-            st.write("**Predicted CLTV (12 months):**")
+            st.write("***Predicted CLTV (12 months):***")
             st.dataframe(rfm_cltv_df.head())
 
-            st.write("**Distribution of Predicted CLTV:**")
-            fig_cltv_dist = px.histogram(rfm_cltv_df, x='predicted_cltv', nbins=50, title='CLTV Distribution')
+            st.write("***Distribution of Predicted CLTV:***")
+        fig_cltv_dist = px.histogram(
+            rfm_cltv_df,
+            x='predicted_cltv',
+            nbins=50,
+            title='CLTV Distribution'
+        )
             st.plotly_chart(fig_cltv_dist)
 
-            st.write("**Top 10 Customers by Predicted CLTV:**")
-            st.dataframe(rfm_cltv_df.sort_values(by='predicted_cltv', ascending=False).head(10))
+            st.write("***Top 10 Customers by Predicted CLTV:***")
+            st.dataframe(
+            rfm_cltv_df.sort_values(by='predicted_cltv', ascending=False).head(10)
+        )
 
-        elif page == "Documentation":
-            st.title("Documentation")
-            st.markdown("""
-            # RFM Analysis and CLTV Prediction
+elif page == "Documentation":
+        st.title("Documentation")
+        st.markdown("""
+        ## RFM Analysis and CLTV Prediction
+        This application performs Recency, Frequency, Monetary (RFM) analysis and predicts
+        Customer Lifetime Value (CLTV) from a given dataset of customer transactions.
+        It is designed to help businesses understand their customer segments and predict future value.
+        """)
 
-            This application performs Recency, Frequency, Monetary (RFM) analysis and predicts Customer Lifetime Value (CLTV) from a given dataset of customer transactions. It is designed to help businesses understand their customer segments and make data-driven decisions.
-
-            ## What are RFM and CLTV?
-
-            ### RFM Analysis
-            RFM stands for:
-            - **Recency**: How recently a customer has made a purchase.
             - **Frequency**: How often a customer makes a purchase.
             - **Monetary**: How much money a customer spends on purchases.
 
