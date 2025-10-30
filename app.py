@@ -24,15 +24,15 @@ def main():
     st.sidebar.title("Upload Data")
     uploaded_file = st.sidebar.file_uploader("Upload your CSV file", type=["csv"])
 
-    if uploaded_file is not None:
+if uploaded_file is not None:
         df = load_data(uploaded_file)
-    else:
+else:
         st.warning("Please upload a CSV file to continue.")
         st.stop()
     #else:
         #df = load_data("shopping_trends.csv")
 
-    if df is not None:
+if df is not None:
         # Data Cleaning and Preparation
         df.dropna(inplace=True)
         df.drop_duplicates(inplace=True)
