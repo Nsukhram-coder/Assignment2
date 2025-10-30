@@ -16,28 +16,28 @@ def load_data(file_path):
 def main():
     st.title("RFM + Simple CLTV Analyzer")
 
-    # --- Sidebar navigation
-    page = st.sidebar.radio("Go to:", ["Home", "RFM Analysis", "CLTV Prediction", "Documentation"])
+    # ---- Sidebar navigation (define `page` BEFORE any `if page == ...`)
+    page = st.sidebar.radio(
+        "Go to:",
+        ["Home", "RFM Analysis", "CLTV Prediction", "Documentation"]
+    )
 
-    # --- Data upload (keep this EXACTLY as-is and inside main())
+    # ---- Upload (single uploader; no duplicates)
     st.sidebar.title("Upload Data")
     uploaded_file = st.sidebar.file_uploader("Upload your CSV", type=["csv"])
-
     if uploaded_file is None:
         st.info("Please upload a CSV to continue.")
         st.stop()
 
-    # Load the CSV now that we know it's present
+    # ---- Read CSV
     try:
         df = pd.read_csv(uploaded_file)
     except Exception as e:
         st.error(f"Failed to read CSV: {e}")
         st.stop()
 
-    # (continue with cleaning, compute RFM, etc…)
-
     # ---- Basic cleaning & required columns
-    # Expect columns: customer_id, invoice_date, and either total_spend or (quantity, price)
+    # Expect: customer_id, invoice_date, and either total_spend or (quantity, price)
     if "total_spend" not in df.columns:
         if {"quantity", "price"}.issubset(df.columns):
             df["total_spend"] = pd.to_numeric(df["quantity"], errors="coerce") * pd.to_numeric(df["price"], errors="coerce")
@@ -63,8 +63,7 @@ def main():
     )
 
     # ---- RFM scoring & segmentation
-    # Rank then qcut to be robust to ties
-    r = rfm_df["Recency"].rank(method="first", ascending=False)   # lower recency (more recent) is better
+    r = rfm_df["Recency"].rank(method="first", ascending=False)   # lower days => better
     f = rfm_df["Frequency"].rank(method="first", ascending=True)
     m = rfm_df["Monetary"].rank(method="first", ascending=True)
 
@@ -82,102 +81,65 @@ def main():
     rfm_df["segment"] = rfm_df["RFM_Sum"].apply(segment)
 
     # ---- Simple CLTV (no lifetimes)
-    from sklearn.linear_model import LinearRegression
-    import numpy as np
-
     X = rfm_df[["Recency","Frequency","Monetary"]].fillna(0)
     y = rfm_df["Monetary"].fillna(0)
-
     lr = LinearRegression().fit(X, y)
     monthly = lr.predict(X)
     rfm_df["Predicted_Monthly_Spend"] = np.clip(monthly, 0, None)
     rfm_df["predicted_cltv"] = rfm_df["Predicted_Monthly_Spend"] * 12
-
-    # Table used by your pages
     rfm_cltv_df = rfm_df.copy()
-    
-if page == "Home":
-            st.title("Home")
-            st.write("Welcome to the RFM Analysis and CLTV Prediction App.")
-            st.subheader("1. Data Loading & Cleaning")
-            st.write("**Dataset Preview:**")
-            st.dataframe(df.head())
-            st.write("**Cleaned Dataset Info:**")
-            st.text(f"Number of rows: {df.shape[0]} | Number of columns: {df.shape[1]}")
 
-elif page == "RFM Analysis":
-            st.title("RFM Analysis")
-            st.write("***RFM Summary Metrics:***")
-            st.write(f"Average Recency: {rfm_cltv_df['R'].mean():.2f} days")
-            st.write(f"Average Frequency: {rfm_cltv_df['F'].mean():.2f} purchases")
-            st.write(f"Average Monetary: ${rfm_cltv_df['M'].mean():.2f}")
+    # ---- Pages
+    if page == "Home":
+        st.subheader("Dataset Preview")
+        st.write(df.head())
+        st.caption(f"Rows: {len(df):,}")
 
-            st.write("***RFM Analysis Results:***")
-            st.dataframe(rfm_cltv_df.head())
+        st.subheader("RFM Preview")
+        st.write(rfm_df.head())
 
-            st.write("***Customer Segmentation:***")
-            segment_counts = rfm_cltv_df['segment'].value_counts()
-            fig_segments = px.bar(
-                x=segment_counts.index,
-                y=segment_counts.values,
-                labels={'x': 'Segment', 'y': 'Number of Customers'},
-                title="Customer Segments"
-            )
-            st.plotly_chart(fig_segments)
+    elif page == "RFM Analysis":
+        st.title("RFM Analysis")
+        st.write("***RFM Summary Metrics:***")
+        st.write(f"Average Recency: {rfm_cltv_df['Recency'].mean():.2f} days")
+        st.write(f"Average Frequency: {rfm_cltv_df['Frequency'].mean():.2f} purchases")
+        st.write(f"Average Monetary: ${rfm_cltv_df['Monetary'].mean():.2f}")
 
-elif page == "CLTV Prediction":
-            st.title("CLTV Prediction")
-            st.write("***Predicted CLTV (12 months):***")
-            st.dataframe(rfm_cltv_df.head())
+        st.write("***RFM Analysis Results:***")
+        st.dataframe(rfm_cltv_df.head())
 
-            st.write("***Distribution of Predicted CLTV:***")
-            fig_cltv_dist = px.histogram(
-                rfm_cltv_df,
-                x="predicted_cltv",
-                nbins=50,
-                title="CLTV Distribution"
-            )
-            st.plotly_chart(fig_cltv_dist)
+        st.write("***Customer Segmentation:***")
+        seg_counts = rfm_cltv_df["segment"].value_counts()
+        fig_segments = px.bar(
+            x=seg_counts.index, y=seg_counts.values,
+            labels={"x": "Segment", "y": "Number of Customers"},
+            title="Customer Segments"
+        )
+        st.plotly_chart(fig_segments)
 
-            st.write("***Top 10 Customers by Predicted CLTV:***")
-            st.dataframe(
-                rfm_cltv_df.sort_values(by="predicted_cltv", ascending=False).head(10)
-            )
+    elif page == "CLTV Prediction":
+        st.title("CLTV Prediction")
+        st.write("***Predicted CLTV (12 months):***")
+        st.dataframe(rfm_cltv_df[["customer_id","Recency","Frequency","Monetary","predicted_cltv"]].head())
 
-        # Download button (RFM + CLTV results)
-            csv = rfm_cltv_df.to_csv(index=False).encode("utf-8")
-            st.download_button(
-                label="Download Results (RFM + CLTV CSV)",
-                data=csv,
-                file_name="rfm_cltv_results.csv",
-                mime="text/csv",
-            )
+        st.write("***Distribution of Predicted CLTV:***")
+        fig_cltv_dist = px.histogram(rfm_cltv_df, x="predicted_cltv", nbins=50, title="CLTV Distribution")
+        st.plotly_chart(fig_cltv_dist)
 
-elif page == "Documentation":
-            st.title("Documentation")
-            st.markdown("""
+        st.write("***Top 10 Customers by Predicted CLTV:***")
+        st.dataframe(rfm_cltv_df.sort_values(by="predicted_cltv", ascending=False).head(10))
+
+        csv = rfm_cltv_df.to_csv(index=False).encode("utf-8")
+        st.download_button("Download Results (RFM + CLTV CSV)", data=csv, file_name="rfm_cltv_results.csv", mime="text/csv")
+
+    elif page == "Documentation":
+        st.title("Documentation")
+        st.markdown("""
         ## RFM Analysis and CLTV Prediction
-
-        This application performs Recency, Frequency, Monetary (RFM) analysis and predicts
-        Customer Lifetime Value (CLTV) from a dataset of customer transactions. It helps
-        businesses understand their customer segments and estimate future value.
-
-        ### What the app does
-        - Cleans your uploaded CSV
-        - Computes RFM (Recency, Frequency, Monetary)
-        - Scores and segments customers
-        - Estimates a simple 12-month CLTV using Linear Regression on R, F, and M
-
-        ### Expected columns
-        - `customer_id`
-        - `invoice_date`
-        - `total_spend` **or** both `quantity` and `price` (to compute `total_spend`)
-
-        ### How this can be used
-        - **Segment Customers:** Identify different customer segments and understand their behavior.
-        - **Targeted Marketing:** Create personalized campaigns for different segments.
-        - **Customer Retention:** Focus on retaining high-value customers (e.g., “Champions”, “Loyal Customers”).
-        - **Optimize Spend:** Allocate marketing resources more effectively based on predicted CLTV.
+        - Upload your transactional CSV.
+        - App computes RFM (Recency, Frequency, Monetary) and segments customers.
+        - Simple CLTV = predicted monthly spend (via Linear Regression on R,F,M) × 12.
+        - Expected columns: `customer_id`, `invoice_date`, and `total_spend` **or** both `quantity` + `price`.
         """)
 
 if __name__ == "__main__":
