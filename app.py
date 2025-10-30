@@ -76,9 +76,9 @@ def main():
         rfm_df['segment'] = rfm_df['segment'].replace(segment_map, regex=True)
 
         # CLTV Calculation
-        summary = summary_data_from_transaction_data(df, 'customer_id', 'invoice_date', 'total_spend')
-        bgf = BetaGeoFitter(penalizer_coef=0.0)
-        bgf.fit(summary['frequency'], summary['recency'], summary['T'])
+        #summary = summary_data_from_transaction_data(df, 'customer_id', 'invoice_date', 'total_spend')
+        #bgf = BetaGeoFitter(penalizer_coef=0.0)
+        #bgf.fit(summary['frequency'], summary['recency'], summary['T'])
 
         # The GammaGammaFitter model can only be trained on customers with frequency > 0 and monetary_value > 0.
         ggf_df = summary[(summary['frequency'] > 0) & (summary['monetary_value'] > 0)]
@@ -97,6 +97,27 @@ def main():
         )
         rfm_cltv_df = rfm_df.merge(summary[['predicted_cltv']], left_index=True, right_index=True, how='left')
         rfm_cltv_df['predicted_cltv'].fillna(0, inplace=True)
+
+        # --- Simple CLTV Calculation (RFM + Linear Regression) ---
+st.subheader("Simple CLTV Prediction")
+
+from sklearn.linear_model import LinearRegression
+
+# Prepare data
+rfm_features = rfm_df[['Recency', 'Frequency', 'Monetary']].copy()
+rfm_features = rfm_features.fillna(0)
+target = rfm_df['Monetary']
+
+# Fit simple model
+model = LinearRegression()
+model.fit(rfm_features, target)
+
+# Predict monthly spend and compute 12-month CLTV
+rfm_df['Predicted_Monthly_Spend'] = model.predict(rfm_features).clip(min=0)
+rfm_df['CLTV_12mo'] = rfm_df['Predicted_Monthly_Spend'] * 12
+
+# Display results
+st.write(rfm_df[['Recency', 'Frequency', 'Monetary', 'CLTV_12mo']].head())
 
         if page == "Home":
             st.title("Home")
