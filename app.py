@@ -168,13 +168,13 @@ elif page == "CLTV Prediction":
             )
 
         # Download button (RFM + CLTV results)
-        csv = rfm_cltv_df.to_csv(index=False).encode("utf-8")
-        st.download_button(
-            label="Download Results (RFM + CLTV CSV)",
-            data=csv,
-            file_name="rfm_cltv_results.csv",
-            mime="text/csv",
-        )
+            csv = rfm_cltv_df.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                label="Download Results (RFM + CLTV CSV)",
+                data=csv,
+                file_name="rfm_cltv_results.csv",
+                mime="text/csv",
+            )
 
 elif page == "Documentation":
             st.title("Documentation")
