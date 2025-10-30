@@ -27,7 +27,10 @@ def main():
     if uploaded_file is not None:
         df = load_data(uploaded_file)
     else:
-        df = load_data("shopping_trends.csv")
+    st.warning("Please upload a CSV file to continue.")
+    st.stop()
+    #else:
+        #df = load_data("shopping_trends.csv")
 
     if df is not None:
         # Data Cleaning and Preparation
