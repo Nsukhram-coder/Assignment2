@@ -15,8 +15,8 @@ def load_data(file_path):
 
 def main():
     # Moved lifetimes import here to avoid environment conflicts
-    from lifetimes import BetaGeoFitter, GammaGammaFitter
-    from lifetimes.utils import summary_data_from_transaction_data
+    #from lifetimes import BetaGeoFitter, GammaGammaFitter
+    #from lifetimes.utils import summary_data_from_transaction_data
 
     st.sidebar.title("Navigation")
     page = st.sidebar.radio("Go to", ["Home", "RFM Analysis", "CLTV Prediction", "Documentation"])
