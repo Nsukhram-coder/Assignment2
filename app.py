@@ -36,94 +36,66 @@ def main():
 
     # (continue with cleaning, compute RFM, etc…)
 
+    # ---- Basic cleaning & required columns
+    # Expect columns: customer_id, invoice_date, and either total_spend or (quantity, price)
+    if "total_spend" not in df.columns:
+        if {"quantity", "price"}.issubset(df.columns):
+            df["total_spend"] = pd.to_numeric(df["quantity"], errors="coerce") * pd.to_numeric(df["price"], errors="coerce")
+        else:
+            st.error("Your CSV must include 'total_spend' or both 'quantity' and 'price'.")
+            st.stop()
 
-if df is not None:
-        # Data Cleaning and Preparation
-        df.dropna(inplace=True)
-        df.drop_duplicates(inplace=True)
-        df['invoice_date'] = pd.to_datetime(df['invoice_date'], format='%d/%m/%Y')
-        df['customer_id'] = df['customer_id'].astype(str)
-        df['price'] = pd.to_numeric(df['price'])
-        df['quantity'] = pd.to_numeric(df['quantity'])
-        df['total_spend'] = df['quantity'] * df['price']
+    df["invoice_date"] = pd.to_datetime(df["invoice_date"], errors="coerce")
+    df["customer_id"] = df["customer_id"].astype(str)
+    df["total_spend"] = pd.to_numeric(df["total_spend"], errors="coerce")
+    df = df.dropna(subset=["customer_id", "invoice_date", "total_spend"])
 
-        # RFM Calculation
-        max_date = df['invoice_date'].max()
-        rfm_df = df.groupby('customer_id').agg({
-            'invoice_date': lambda date: (max_date - date.max()).days,
-            'invoice_no': 'count',
-            'total_spend': 'sum'
-        })
-        rfm_df.rename(columns={
-            'invoice_date': 'R',
-            'invoice_no': 'F',
-            'total_spend': 'M'
-        }, inplace=True)
+    # ---- Compute RFM
+    snapshot_date = df["invoice_date"].max() + pd.Timedelta(days=1)
+    rfm_df = (
+        df.groupby("customer_id")
+          .agg(
+              Recency=("invoice_date", lambda x: (snapshot_date - x.max()).days),
+              Frequency=("invoice_date", "count"),
+              Monetary=("total_spend", "sum"),
+          )
+          .reset_index()
+    )
 
-        rfm_df['r_score'] = pd.qcut(rfm_df['R'].rank(method='first'), 5, labels=[5, 4, 3, 2, 1])
-        rfm_df['f_score'] = pd.qcut(rfm_df['F'].rank(method='first'), 5, labels=[1, 2, 3, 4, 5])
-        rfm_df['m_score'] = pd.qcut(rfm_df['M'].rank(method='first'), 5, labels=[1, 2, 3, 4, 5])
-        rfm_df['rfm_score'] = rfm_df['r_score'].astype(str) + rfm_df['f_score'].astype(str) + rfm_df['m_score'].astype(str)
+    # ---- RFM scoring & segmentation
+    # Rank then qcut to be robust to ties
+    r = rfm_df["Recency"].rank(method="first", ascending=False)   # lower recency (more recent) is better
+    f = rfm_df["Frequency"].rank(method="first", ascending=True)
+    m = rfm_df["Monetary"].rank(method="first", ascending=True)
 
-        segment_map = {
-            r'[1-2][1-2]': 'Hibernating',
-            r'[1-2][3-4]': 'At Risk',
-            r'[1-2]5': 'Cannot Lose Them',
-            r'3[1-2]': 'About to Sleep',
-            r'33': 'Need Attention',
-            r'[3-4][4-5]': 'Loyal Customers',
-            r'41': 'Promising',
-            r'51': 'New Customers',
-            r'[4-5][2-3]': 'Potential Loyalists',
-            r'5[4-5]': 'Champions'
-        }
-        rfm_df['segment'] = rfm_df['r_score'].astype(str) + rfm_df['f_score'].astype(str)
-        rfm_df['segment'] = rfm_df['segment'].replace(segment_map, regex=True)
+    rfm_df["R_Score"] = pd.qcut(r, q=5, labels=[5,4,3,2,1], duplicates="drop").astype(int)
+    rfm_df["F_Score"] = pd.qcut(f, q=5, labels=[1,2,3,4,5], duplicates="drop").astype(int)
+    rfm_df["M_Score"] = pd.qcut(m, q=5, labels=[1,2,3,4,5], duplicates="drop").astype(int)
+    rfm_df["RFM_Sum"] = rfm_df[["R_Score","F_Score","M_Score"]].sum(axis=1)
 
-        # CLTV Calculation
-        #summary = summary_data_from_transaction_data(df, 'customer_id', 'invoice_date', 'total_spend')
-        #bgf = BetaGeoFitter(penalizer_coef=0.0)
-        #bgf.fit(summary['frequency'], summary['recency'], summary['T'])
+    def segment(total):
+        if total >= 13: return "Champions"
+        if total >= 10: return "Loyal"
+        if total >= 7:  return "Potential"
+        if total >= 5:  return "At Risk"
+        return "Hibernating"
+    rfm_df["segment"] = rfm_df["RFM_Sum"].apply(segment)
 
-        # The GammaGammaFitter model can only be trained on customers with frequency > 0 and monetary_value > 0.
-        ggf_df = summary[(summary['frequency'] > 0) & (summary['monetary_value'] > 0)]
-        ggf = GammaGammaFitter(penalizer_coef=0.0)
-        ggf.fit(ggf_df['frequency'], ggf_df['monetary_value'])
+    # ---- Simple CLTV (no lifetimes)
+    from sklearn.linear_model import LinearRegression
+    import numpy as np
 
-        summary['predicted_cltv'] = ggf.customer_lifetime_value(
-            bgf,
-            summary['frequency'],
-            summary['recency'],
-            summary['T'],
-            summary['monetary_value'],
-            time=12,  # 12 months
-            freq='D', # Daily frequency
-            discount_rate=0.01
-        )
-        rfm_cltv_df = rfm_df.merge(summary[['predicted_cltv']], left_index=True, right_index=True, how='left')
-        rfm_cltv_df['predicted_cltv'].fillna(0, inplace=True)
+    X = rfm_df[["Recency","Frequency","Monetary"]].fillna(0)
+    y = rfm_df["Monetary"].fillna(0)
 
-        # --- Simple CLTV Calculation (RFM + Linear Regression) ---
-st.subheader("Simple CLTV Prediction")
+    lr = LinearRegression().fit(X, y)
+    monthly = lr.predict(X)
+    rfm_df["Predicted_Monthly_Spend"] = np.clip(monthly, 0, None)
+    rfm_df["predicted_cltv"] = rfm_df["Predicted_Monthly_Spend"] * 12
 
-from sklearn.linear_model import LinearRegression
-
-# Prepare data
-rfm_features = rfm_df[['Recency', 'Frequency', 'Monetary']].copy()
-rfm_features = rfm_features.fillna(0)
-target = rfm_df['Monetary']
-
-# Fit simple model
-model = LinearRegression()
-model.fit(rfm_features, target)
-
-# Predict monthly spend and compute 12-month CLTV
-rfm_df['Predicted_Monthly_Spend'] = model.predict(rfm_features).clip(min=0)
-rfm_df['CLTV_12mo'] = rfm_df['Predicted_Monthly_Spend'] * 12
-
-# Display results
-st.write(rfm_df[['Recency', 'Frequency', 'Monetary', 'CLTV_12mo']].head())
-
+    # Table used by your pages
+    rfm_cltv_df = rfm_df.copy()
+    
 if page == "Home":
             st.title("Home")
             st.write("Welcome to the RFM Analysis and CLTV Prediction App.")
