@@ -1,0 +1,6 @@
+streamlit
+pandas
+numpy
+plotly
+lifetimes
+autograd==1.4
